@@ -134,4 +134,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+FILE_UPLOAD_TEMP_DIR = MEDIA_ROOT / 'tmp_files'
+
 CORS_ALLOW_ALL_ORIGINS = True

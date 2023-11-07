@@ -1,23 +1,29 @@
 import os
 import moviepy.editor as mp
 import speech_recognition as sr
-from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
+from django.conf import settings
 from rest_framework.response import Response
 from rest_framework import status
 
 def transcribe_resource(resource, transcription_language, enable_speaker_recognition):
-    if resource_is_link(resource):
+    
+    if not resource:
         return None
     
-    # else:
-    resource_type = check_resource_type(resource)
+    # content = resource.read()
+    
+    resource_type = check_file_type(resource)
     if resource_type == "video":
-        video      = mp.VideoFileClip(resource)
+        video      = mp.VideoFileClip(resource, fps_source="tbr")
         audio_file = video.audio
     elif resource_type == "audio":
         audio_file = mp.AudioFileClip(resource)
     else:
-        print("Unsupported file extension")
+        return Response(
+            {"detail": "Unsupported File Extension"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
     r = sr.Recognizer()
     
@@ -38,8 +44,6 @@ def transcribe_resource(resource, transcription_language, enable_speaker_recogni
                 {"detail": "Could not request results from Google web speech API; {0}".format(e)}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-    else:
-        return None    
     
     
 def resource_is_link(resource):
@@ -52,8 +56,8 @@ def resource_is_link(resource):
     return False
 
 
-def check_resource_type(resource):
-    file_extension = os.path.splitext(resource)[1].lower()    
+def check_file_type(file_path):
+    file_extension = os.path.splitext(file_path)[1].lower()
     
     if file_extension in [".mp4", ".avi", ".mkv", ".webm"]:
         return "video"
@@ -63,7 +67,20 @@ def check_resource_type(resource):
         return None
 
 
-def get_resource_info(resource):
-    file_type = check_resource_type(resource)
-    name, ext = os.path.splitext(os.path.basename(resource)), file_type, "120 mins"
-    return {"name": name, "type": file_type, "duration": ext}
+def get_resource_info(file_path):
+    if os.path.exists(file_path):
+        name, ext = os.path.splitext(os.path.basename(file_path)), check_file_type(file_path)
+        return {"name": name, "type": ext, "duration": "120 mins"}
+    else:
+        return None
+    
+def save_temporary_file(uploaded_file):
+    
+    temporary_dir = settings.FILE_UPLOAD_TEMP_DIR
+    
+    with TemporaryUploadedFile(uploaded_file.name, uploaded_file.content_type, 0, None) as temp_file:
+        with open(os.path.join(temporary_dir, uploaded_file.name), 'wb') as dest:
+            for chunk in temp_file.chunks():
+                dest.write(chunk)
+                
+    return os.path.join(temporary_dir, uploaded_file.name)

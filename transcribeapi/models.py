@@ -8,9 +8,10 @@ class Transcription(models.Model):
         ("audio", "Audio"),
         ("video", "Video"),
         ("link", "Link"),
+        ("unknown", "Unknown")
     )
     
-    resource = models.FileField(
+    resource_file = models.FileField(
         verbose_name=_("Resource"),
         upload_to="uploads/",
         null=True,
@@ -33,6 +34,7 @@ class Transcription(models.Model):
         verbose_name=_("Resource Type"),
         choices=RESOURCE_TYPE_CHOICES,
         max_length=20,
+        default="unknown"
     )
     
     resource_duration = models.CharField(
