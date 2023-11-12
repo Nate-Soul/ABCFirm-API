@@ -1,5 +1,6 @@
 import os
 import moviepy.editor as mp
+import mimetypes
 import speech_recognition as sr
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.conf import settings
@@ -11,40 +12,48 @@ def transcribe_resource(resource, transcription_language, enable_speaker_recogni
     if not resource:
         return None
     
-    # content = resource.read()
+    resource_content = resource.read()
+    resource_type = get_resource_type(resource)
     
-    resource_type = check_file_type(resource)
     if resource_type == "video":
-        video      = mp.VideoFileClip(resource, fps_source="tbr")
-        audio_file = video.audio
+        try:
+            video      = mp.VideoFileClip(resource_content)
+            audio      = video.audio            
+        except Exception as e:
+            return None
+                
     elif resource_type == "audio":
-        audio_file = mp.AudioFileClip(resource)
-    else:
+        try:
+            audio = mp.AudioFileClip(resource.name)
+        except Exception as e:
+            return None
+            
+    #Transcribe the audio file
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(audio.write_audiofile("temp_audio.wav")) as source:
+        audio_data = recognizer.record(source)
+        
+    language_code = transcription_language    
+    if enable_speaker_recognition:
+        language_code += "-speaker"
+    
+    try:
+        transcribed_text = recognizer.recognize_google(audio_data, language=language_code)
+        return transcribed_text
+    except sr.UnknownValueError:
         return Response(
-            {"detail": "Unsupported File Extension"},
+            {"detail": "Speech Recognition could not understand speech in audio file"}, 
             status=status.HTTP_400_BAD_REQUEST
         )
-    
-    r = sr.Recognizer()
-    
-    with sr.AudioFile(audio_file) as source:
-        data = r.record(source)
-        
-    if enable_speaker_recognition:
-        try:
-            text = r.recognize_google(data, language=transcription_language)
-            return text
-        except sr.UnknownValueError:
-            return Response(
-                {"detail": "Speech Recognition could not understand audio"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        except sr.RequestError as e:
-            return Response(
-                {"detail": "Could not request results from Google web speech API; {0}".format(e)}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-    
+    except sr.RequestError as e:
+        return Response(
+            {"detail": "Could not request results from Google web speech API; {0}".format(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    finally:
+        video.close()
+        audio.close()
+        os.remove("temp_audio.wav")    
     
 def resource_is_link(resource):
     if isinstance(resource, InMemoryUploadedFile):
@@ -56,21 +65,36 @@ def resource_is_link(resource):
     return False
 
 
-def check_file_type(file_path):
-    file_extension = os.path.splitext(file_path)[1].lower()
-    
-    if file_extension in [".mp4", ".avi", ".mkv", ".webm"]:
+def get_resource_type(resource):
+    file_mimetype = resource.content_type
+    if file_mimetype.startswith("video/"):
         return "video"
-    elif file_extension in [".mp3", ".wav", ".ogg", ".flac"]:
+    elif file_mimetype.startswith("audio/"):
         return "audio"
     else:
         return None
-
-
-def get_resource_info(file_path):
-    if os.path.exists(file_path):
-        name, ext = os.path.splitext(os.path.basename(file_path)), check_file_type(file_path)
-        return {"name": name, "type": ext, "duration": "120 mins"}
+        
+    
+def get_resource_duration(resource):
+    resource_contents = resource.read()
+    resource_type     = get_resource_type(resource)
+    if resource_type == "video":
+        try:
+            video = mp.VideoFileClip(resource_contents)
+            duration = video.duration
+            video.close()
+            return duration
+        except Exception as e:
+            return None
+                  
+    elif resource_type == "audio":
+        try:
+            audio = mp.AudioFileClip(resource_contents)
+            duration = audio.duration
+            audio.close()
+            return duration
+        except Exception as e:
+            return None
     else:
         return None
     

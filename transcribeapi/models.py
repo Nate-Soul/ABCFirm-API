@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+import uuid
 
 # Create your models here.
 class Transcription(models.Model):
@@ -8,7 +9,12 @@ class Transcription(models.Model):
         ("audio", "Audio"),
         ("video", "Video"),
         ("link", "Link"),
-        ("unknown", "Unknown")
+    )
+    
+    web_id = models.UUIDField(
+        verbose_name=_("Resource Web ID"),
+        default=uuid.uuid4,
+        editable=False
     )
     
     resource_file = models.FileField(
@@ -16,12 +22,6 @@ class Transcription(models.Model):
         upload_to="uploads/",
         null=True,
         blank=True
-    )
-    
-    resource_name = models.TextField(
-        verbose_name=_("Resource Name"),
-        null=True,
-        blank=True,
     )
     
     resource_link = models.TextField(
@@ -34,7 +34,6 @@ class Transcription(models.Model):
         verbose_name=_("Resource Type"),
         choices=RESOURCE_TYPE_CHOICES,
         max_length=20,
-        default="unknown"
     )
     
     resource_duration = models.CharField(
@@ -47,7 +46,7 @@ class Transcription(models.Model):
     transcribed_text = models.TextField(
         verbose_name=_("Transcribed Text"),
         null=True,
-        blank=False
+        blank=True
     )
     
     transcription_language = models.CharField(
@@ -59,6 +58,7 @@ class Transcription(models.Model):
         verbose_name=_("Enable Speaker Recognition?"),
         default=False,
     )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -67,4 +67,4 @@ class Transcription(models.Model):
         verbose_name_plural = _("Transcriptions")
         
     def __str__(self):
-        return f"New Resource Transcribed @ {self.created_at}"
+        return f"New Resource Uploaded Transcribed @ {self.created_at}"
