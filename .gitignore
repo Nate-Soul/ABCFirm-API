@@ -1,3 +1,31 @@
+#virtual environments
+.venv
 venv
+virtualenv
+.virtualenv
+
+#python caches
+__pycache__
+*.pyc
+*.pyo
+
+# Local env files
 .env
+.env.*
+!.env.example
+
+#vs code folder
+.vscode
+
+#node modules
+node_modules
+
+#database files
+instance/
+*.sqlite
+*.db
+app/*.sqlite
+app/*.db
+
+# media files
 media/tmp_files
