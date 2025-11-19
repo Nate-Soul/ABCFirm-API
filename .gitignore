@@ -15,7 +15,6 @@ __pycache__
 !.env.example
 
 #vs code folder
-.vscode
 
 #node modules
 node_modules
@@ -29,3 +28,8 @@ app/*.db
 
 # media files
 media/tmp_files
+media/uploads/
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
